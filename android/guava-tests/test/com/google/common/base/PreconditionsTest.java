@@ -76,6 +76,60 @@ public class PreconditionsTest extends TestCase {
     }
   }
 
+  public void testCheckArgument_nullMessageWithArgs_failure() {
+    try {
+      Preconditions.checkArgument(false, null, "b", "d");
+      fail("no exception thrown");
+    } catch (IllegalArgumentException e) {
+      assertThat(e).hasMessageThat().isEqualTo("null [b, d]");
+    }
+  }
+
+  public void testCheckArgument_nullArgs_failure() {
+    try {
+      Preconditions.checkArgument(false, "A %s C %s E", null, null);
+      fail("no exception thrown");
+    } catch (IllegalArgumentException e) {
+      assertThat(e).hasMessageThat().isEqualTo("A null C null E");
+    }
+  }
+
+  public void testCheckArgument_notEnoughArgs_failure() {
+    try {
+      Preconditions.checkArgument(false, "A %s C %s E", "b");
+      fail("no exception thrown");
+    } catch (IllegalArgumentException e) {
+      assertThat(e).hasMessageThat().isEqualTo("A b C %s E");
+    }
+  }
+
+  public void testCheckArgument_tooManyArgs_failure() {
+    try {
+      Preconditions.checkArgument(false, "A %s C %s E", "b", "d", "f");
+      fail("no exception thrown");
+    } catch (IllegalArgumentException e) {
+      assertThat(e).hasMessageThat().isEqualTo("A b C d E [f]");
+    }
+  }
+
+  public void testCheckArgument_singleNullArg_failure() {
+    try {
+      Preconditions.checkArgument(false, "A %s C", (Object) null);
+      fail("no exception thrown");
+    } catch (IllegalArgumentException e) {
+      assertThat(e).hasMessageThat().isEqualTo("A null C");
+    }
+  }
+
+  public void testCheckArgument_singleNullArray_failure() {
+    try {
+      Preconditions.checkArgument(false, "A %s C", (Object[]) null);
+      fail("no exception thrown");
+    } catch (IllegalArgumentException e) {
+      assertThat(e).hasMessageThat().isEqualTo("A (Object[])null C");
+    }
+  }
+
   public void testCheckArgument_complexMessage_success() {
     Preconditions.checkArgument(true, "%s", IGNORE_ME);
   }
@@ -166,8 +220,7 @@ public class PreconditionsTest extends TestCase {
   }
 
   public void testCheckNotNull_complexMessage_success() {
-    String result = Preconditions.checkNotNull(
-        NON_NULL_STRING, "%s", IGNORE_ME);
+    String result = Preconditions.checkNotNull(NON_NULL_STRING, "%s", IGNORE_ME);
     assertSame(NON_NULL_STRING, result);
   }
 
@@ -339,12 +392,13 @@ public class PreconditionsTest extends TestCase {
     assertEquals("5 + 6 = 11", Preconditions.format("5 + %s = 11", 6));
     assertEquals("5 + 6 = 11", Preconditions.format("5 + 6 = %s", 11));
     assertEquals("5 + 6 = 11", Preconditions.format("%s + %s = %s", 5, 6, 11));
-    assertEquals("null [null, null]",
-        Preconditions.format("%s", null, null, null));
+    assertEquals("null [null, null]", Preconditions.format("%s", null, null, null));
     assertEquals("null [5, 6]", Preconditions.format(null, 5, 6));
+    assertEquals("null", Preconditions.format("%s", (Object) null));
+    assertEquals("(Object[])null", Preconditions.format("%s", (Object[]) null));
   }
 
-    @GwtIncompatible("Reflection")
+  @GwtIncompatible("Reflection")
   public void testAllOverloads_checkArgument() throws Exception {
     for (ImmutableList<Class<?>> sig : allSignatures(boolean.class)) {
       Method checkArgumentMethod =
@@ -437,11 +491,7 @@ public class PreconditionsTest extends TestCase {
   }
 
   private static final ImmutableList<Class<?>> possibleParamTypes =
-      ImmutableList.of(
-          char.class,
-          int.class,
-          long.class,
-          Object.class);
+      ImmutableList.of(char.class, int.class, long.class, Object.class);
 
   /**
    * Returns a list of parameters for invoking an overload of checkState, checkArgument or
@@ -463,7 +513,7 @@ public class PreconditionsTest extends TestCase {
         allOverloads.add(
             ImmutableList.<Class<?>>builder()
                 .add(predicateType)
-                .add(String.class)  // the format string
+                .add(String.class) // the format string
                 .addAll(curr)
                 .build());
       }
@@ -484,7 +534,7 @@ public class PreconditionsTest extends TestCase {
     int anInt = 1;
     // With a boxed predicate, no overloads can be selected in phase 1
     // ambiguous without the call to .booleanValue to unbox the Boolean
-    checkState(boxedBoolean.booleanValue(), "",  1);
+    checkState(boxedBoolean.booleanValue(), "", 1);
     // ambiguous without the cast to Object because the boxed predicate prevents any overload from
     // being selected in phase 1
     checkState(boxedBoolean, "", (Object) boxedLong);
@@ -506,15 +556,19 @@ public class PreconditionsTest extends TestCase {
     tester.testAllPublicStaticMethods(Preconditions.class);
   }
 
-  private static final Object IGNORE_ME = new Object() {
-    @Override public String toString() {
-      throw new AssertionFailedError();
-    }
-  };
+  private static final Object IGNORE_ME =
+      new Object() {
+        @Override
+        public String toString() {
+          throw new AssertionFailedError();
+        }
+      };
 
   private static class Message {
     boolean invoked;
-    @Override public String toString() {
+
+    @Override
+    public String toString() {
       assertFalse(invoked);
       invoked = true;
       return "A message";
